@@ -1,0 +1,33 @@
+-- CreateTable
+CREATE TABLE `configs` (
+    `id` INTEGER NOT NULL,
+    `idInputUsuario` TEXT NULL,
+    `idInputSenha` TEXT NULL,
+    `idBotaoLogin` TEXT NULL,
+    `idBotaoLance` TEXT NULL,
+    `usuario` TEXT NULL,
+    `senha` TEXT NULL,
+    `urlLogin` TEXT NULL,
+    `urlDisputa` TEXT NULL,
+    `tituloDisputa` TEXT NULL,
+    `valorMinimo` TEXT NULL,
+    `idInputLance` TEXT NULL,
+    `lanceInicial` TEXT NULL,
+    `redutor` TEXT NULL,
+    `auto` INTEGER NULL,
+    `horaFinal` TEXT NULL,
+    `redutorAuto` TEXT NULL,
+    `apiKey` TEXT NULL,
+    `siteKey` TEXT NULL,
+    `horaInicialAuto` TEXT NULL,
+    `horaFinalAuto` TEXT NULL,
+    `apiPostLance` TEXT NULL,
+    `hostName` TEXT NULL,
+    `ultimaAtualizacao` TEXT NULL,
+    `proximaAtualizacao` TEXT NULL,
+    `nuSequencial` VARCHAR(45) NULL,
+    `leituraUnica` INTEGER NULL,
+    `horaInicio` VARCHAR(45) NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

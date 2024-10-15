@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model configs {
+  id                 Int     @id
+  idInputUsuario     String? @db.Text
+  idInputSenha       String? @db.Text
+  idBotaoLogin       String? @db.Text
+  idBotaoLance       String? @db.Text
+  usuario            String? @db.Text
+  senha              String? @db.Text
+  urlLogin           String? @db.Text
+  urlDisputa         String? @db.Text
+  tituloDisputa      String? @db.Text
+  valorMinimo        String? @db.Text
+  idInputLance       String? @db.Text
+  lanceInicial       String? @db.Text
+  redutor            String? @db.Text
+  auto               Int?
+  horaFinal          String? @db.Text
+  redutorAuto        String? @db.Text
+  apiKey             String? @db.Text
+  siteKey            String? @db.Text
+  horaInicialAuto    String? @db.Text
+  horaFinalAuto      String? @db.Text
+  apiPostLance       String? @db.Text
+  hostName           String? @db.Text
+  ultimaAtualizacao  String? @db.Text
+  proximaAtualizacao String? @db.Text
+  nuSequencial       String? @db.VarChar(45)
+  leituraUnica       Int?
+  horaInicio         String? @db.VarChar(45)
+}
