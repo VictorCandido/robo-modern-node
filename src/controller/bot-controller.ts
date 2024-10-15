@@ -368,7 +368,7 @@ export default class BotController {
             this.realizarLance(value, redutor);
             value = value - redutor;
 
-            await new Promise(resolve => setTimeout(resolve, 30));
+            await new Promise(resolve => setTimeout(resolve, 25));
 
             const seconds: any = new Date().getSeconds();
             time[seconds] = time[seconds] + 1;
