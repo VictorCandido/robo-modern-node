@@ -132,9 +132,15 @@ export default class BotController {
                     headers: {
                         'Content-Type': 'application/json'
                     },
+                    // body: JSON.stringify({
+                    //     roomId: numSequencial,
+                    //     amount: nextValue
+                    // })
                     body: JSON.stringify({
-                        roomId: numSequencial,
-                        amount: nextValue
+                        'ano': '2024',
+                        'nuSequencial': numSequencial,
+                        'idInteressado': '03887831000115',
+                        'valorLance': nextValue
                     })
                 });
 
