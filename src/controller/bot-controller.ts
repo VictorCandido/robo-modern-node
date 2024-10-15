@@ -361,11 +361,12 @@ export default class BotController {
         }
 
         let continuawhile = this.checkHoraInicialAndFinalAuto();
-        const redutor = String(await this.config.redutorAuto);
+        const redutor = this.parseRedutorToNumber(String(await this.config.redutorAuto));
 
         while (continuawhile) {
-            this.realizarLance(value, this.parseRedutorToNumber(redutor));
-            value = value - 100;
+
+            this.realizarLance(value, redutor);
+            value = value - redutor;
 
             await new Promise(resolve => setTimeout(resolve, 40));
 
