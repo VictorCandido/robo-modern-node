@@ -13,14 +13,16 @@ export default class BotController {
     }
 
     public async startBot() {
-        await this.login();
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            await this.login();
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-        await this.iniciarLances();
-    }
-
-    public async stopBot() {
-        await this.browser?.close();
+            this.iniciarLances();
+            this.iniciaRajadaLances();
+        } catch (error) {
+            console.error('[ERROR] - BotController - startBot - ####', error);
+            throw error;
+        }
     }
 
     private async login() {
@@ -44,19 +46,51 @@ export default class BotController {
         console.log('#### Login realizado com sucesso ####');
     }
 
-    private async navegarCertame() {
-        console.log('#### Navegando para página dos lances ####');
+    private async iniciarLances() {
+        try {
+            console.log('#### Iniciando lances ####');
 
-        await this.page?.goto(String(this.config.urlDisputa))
+            if (!this.checkHoraInicial()) {
+                console.log('#### Aguardando horario para iniciar lances ####');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                this.iniciarLances();
+                return;
+            }
 
-        console.log('#### Lances carregados com sucesso ####');
+            if (this.checkHoraFinal()) {
+                console.log('#### Hora final atingida, finalizando cobertura de valores ####');
+                return false;
+            }
+
+            const lastValue = this.parseStringCurrencyToNumber(String(await this.consultarValorAtualizado()));
+
+            console.log('#### Valor atualizado consultado ####', lastValue);
+            console.log('#### Valor do último lance realizado ####', this.lastBid);
+
+            if (this.lastBid === 0 || lastValue < this.lastBid) {
+                console.log('#### Criando novo lance ####');
+
+                const redutor = this.parseRedutorToNumber(String(await this.config.redutor));
+
+                const nextValue = await this.realizarLance(lastValue, redutor);
+
+                this.lastBid = nextValue;
+            }
+
+            console.log('#### Lances concluídos ####');
+
+            this.iniciarLances();
+        } catch (error) {
+            console.error('[ERROR] - BotController - iniciarLances - ####', error);
+            throw error;
+        }
     }
 
     private async consultarValorAtualizado() {
         console.log('#### Consultando valor atualizado ####');
 
-        const lastValue = await this.page?.evaluate(async () => {
-            const response = await fetch(String(this.config.urlDisputa));
+        const lastValue = await this.page?.evaluate(async (urlDisputa) => {
+            const response = await fetch(String(urlDisputa));
             const htmlString = await response.text();
 
             const element = document.createElement('div');
@@ -72,11 +106,62 @@ export default class BotController {
             }
 
             return lastValue;
-        });
+        }, String(this.config.urlDisputa));
 
         console.log('#### Valor atualizado consultado ####', lastValue);
 
         return lastValue;
+    }
+
+    private async realizarLance(lastValue: number, redutor: number) {
+        try {
+            console.log('#### Realizando Lance ####');
+
+            const nextValue = lastValue - redutor;
+
+            this.validaValorMinimo(nextValue);
+
+            const apiPost = this.config.apiPostLance;
+            const numSequencial = this.config.nuSequencial;
+
+            const response = await this.page?.evaluate(async (params) => {
+                const [nextValue, apiPost, numSequencial] = params;
+
+                const response = await fetch(String(apiPost), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        roomId: numSequencial,
+                        amount: nextValue
+                    })
+                });
+
+                return response;
+            }, [nextValue, apiPost, numSequencial]);
+
+            // console.log('#### Requisição enviada ####');
+            // console.log('#### Resposta recebida ####', response);
+
+            // if (!response?.ok) {
+            //     console.log(`Erro na requisição: ${response?.status} `);
+            // }
+
+            // const result = await response?.json();
+
+            // console.log('#### Resultado da requisição ####', result);
+
+            return nextValue;
+        } catch (error) {
+            console.error('[ERROR] - BotController - realizarLance - ####', error);
+            throw error;
+        }
+    }
+
+    private async validaValorMinimo(nextValue: number) {
+        const valorMinimo = this.parseStringCurrencyToNumber(String(this.config.valorMinimo));
+        if (nextValue < valorMinimo) throw '[ALERTA!!!] - Lance maior que o valor minimo, encerrando execução';
     }
 
     // public async conectarCertame() {
@@ -111,67 +196,94 @@ export default class BotController {
     //     console.log('#### Valor atualizado com sucesso ####');
     // }
 
-    private async iniciarLances() {
-        console.log('#### Iniciando lances ####');
+    private async navegarCertame() {
+        console.log('#### Navegando para página dos lances ####');
 
-        // consultar valor atualizado
-        const lastValue = this.parseStringCurrencyToNumber(String(await this.consultarValorAtualizado()));
+        await this.page?.goto(String(this.config.urlDisputa))
 
-        console.log('#### Valor atualizado consultado ####', lastValue);
-        console.log('#### Valor do último lance realizado ####', this.lastBid);
-
-        // verificar se valor atualizado é igual último lance
-        if (this.lastBid === 0 || lastValue < this.lastBid) {
-            // se for menor, criar novo lance
-            console.log('#### Criando novo lance ####');
-            const nextValue = await this.realizarLance(lastValue);
-
-            this.lastBid = nextValue;
-        }
-
-        console.log('#### Lances concluídos ####');
-
-        // repetir
-        this.iniciarLances();
-    }
-
-    private async realizarLance(lastValue: number) {
-        console.log('#### Realizando Lance ####');
-
-        const nextValue = lastValue - 100;
-
-        const response = await this.page?.evaluate(async (nextValue) => {
-            const response = await fetch('https://nodetst.iv2.com.br/api/socket/bid-sem-captcha', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    roomId: '377f7f5e-4412-475e-b9bf-5db1fe306c57',
-                    amount: nextValue
-                })
-            });
-
-            return response;
-        }, nextValue);
-
-        // console.log('#### Requisição enviada ####');
-        // console.log('#### Resposta recebida ####', response);
-
-        // if (!response?.ok) {
-        //     console.log(`Erro na requisição: ${response?.status} `);
-        // }
-
-        // const result = await response?.json();
-
-        // console.log('#### Resultado da requisição ####', result);
-
-        return nextValue;
+        console.log('#### Lances carregados com sucesso ####');
     }
 
     private parseStringCurrencyToNumber(value: string): number {
         if (!value) return 0;
         return Number(value.replace('R$', '').replace(/\./g, '').replace(',', '.'));
+    }
+
+    private parseRedutorToNumber(value: string): number {
+        if (!value) return 0;
+        return Number(value.replace(',', '.'));
+    }
+
+    private convertToTimestamp(dateString: string): number {
+        const [datePart, timePart] = dateString.split(' ');
+        const [day, month, year] = datePart.split('/').map(Number);
+        const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+        const date = new Date(year, month - 1, day, hours, minutes, seconds);
+        return date.getTime();
+    }
+
+    private checkHoraInicial() {
+        const horaInicio = this.config.horaInicio;
+
+        if (!horaInicio) throw '[ALERTA!!!] - Hora inicio nula, encerrando execução';
+
+        const horaInicioDate = new Date(this.convertToTimestamp(horaInicio)).getTime();
+        const horaAtual = new Date().getTime();
+
+        return horaAtual >= horaInicioDate;
+    }
+
+    private checkHoraFinal() {
+        const horaFinal = this.config.horaFinal;
+
+        if (!horaFinal) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+
+        const horaFinalDate = new Date(this.convertToTimestamp(horaFinal)).getTime();
+        const horaAtual = new Date().getTime();
+
+        return horaAtual >= horaFinalDate;
+    }
+
+    private checkHoraFinalAuto() {
+        const horaFinalAuto = this.config.horaFinalAuto;
+
+        if (!horaFinalAuto) throw '[ALERTA!!!] - HorafinalAuto nula, encerrando execução';
+
+        const horaFinalAutoDate = new Date(this.convertToTimestamp(horaFinalAuto)).getTime();
+        const horaAtual = new Date().getTime();
+
+        if (horaAtual >= horaFinalAutoDate) {
+            console.log('[ALERTA!!!] - Hora final atingida, encerrando execução');
+            throw '[ALERTA!!!] - Hora final atingida, encerrando execução';
+        }
+    }
+
+    private checkHoraInicialAndFinalAuto() {
+        const horaInicialAuto = this.config.horaInicialAuto;
+        const horaFinalAuto = this.config.horaFinalAuto;
+
+        if (!horaInicialAuto) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        if (!horaFinalAuto) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+
+
+        const horaInicialAutoDate = new Date(this.convertToTimestamp(horaInicialAuto)).getTime();
+        const horaFinalAutoDate = new Date(this.convertToTimestamp(horaFinalAuto)).getTime();
+        const horaAtual = new Date().getTime();
+
+        return (horaAtual >= horaInicialAutoDate && horaAtual <= horaFinalAutoDate);
+    }
+
+    private async iniciaRajadaLances() {
+        this.checkHoraFinalAuto();
+
+        if (this.checkHoraInicialAndFinalAuto()) {
+            await this.rajadaDeLances();
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        this.iniciaRajadaLances();
     }
 
     private async rajadaDeLances() {
@@ -242,8 +354,11 @@ export default class BotController {
             59: 0
         }
 
-        while (true) {
-            this.realizarLance(value);
+        let continuawhile = this.checkHoraInicialAndFinalAuto();
+        const redutor = String(await this.config.redutorAuto);
+
+        while (continuawhile) {
+            this.realizarLance(value, this.parseRedutorToNumber(redutor));
             value = value - 100;
 
             await new Promise(resolve => setTimeout(resolve, 40));
@@ -253,6 +368,8 @@ export default class BotController {
 
             console.log('#### Lances realizados ####', value);
             console.log('#### Lances por segundo ####', time);
+
+            continuawhile = this.checkHoraInicialAndFinalAuto();
         }
     }
 
@@ -265,4 +382,8 @@ export default class BotController {
 
     //     await this.iniciarLances();
     // }
+
+    public async stopBot() {
+        await this.browser?.close();
+    }
 }

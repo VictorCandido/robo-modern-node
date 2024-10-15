@@ -29,12 +29,6 @@ export default class MenuController {
         console.log('');
         console.log('Para seguir, por favor escolha uma das opções:');
         console.log('');
-        // console.log('1. Realizar Login');
-        // console.log('2. Conectar Certame');
-        // console.log('3. Iniciar Lances');
-        // console.log('4. Rajada de Lances');
-        // console.log('5. Realizar Testes Completo');
-        // console.log('6. Encerrar BOT');
 
         await this.loadTitles();
 
@@ -60,55 +54,6 @@ export default class MenuController {
 
         const botController = new BotController(config);
         botController.startBot();
-
-
-        // switch (option.trim()) {
-        //     case '1':
-        //         // Realizar Login
-        //         await this.botController.login();
-        //         this.promptUser();
-
-        //         break;
-
-        //     case '2':
-        //         // Conectar Certame
-        //         await this.botController.conectarCertame();
-        //         this.promptUser();
-
-        //         break;
-
-        //     case '3':
-        //         // Iniciar Lances
-        //         await this.botController.iniciarLances();
-        //         this.promptUser();
-
-        //         break;
-
-        //     case '4':
-        //         // Rajada de lances
-        //         await this.botController.rajadaDeLances();
-        //         this.promptUser();
-
-        //         break;
-
-        //     case '5':
-        //         // Realizar Testes Completo
-        //         await this.botController.testeCompleto();
-        //         this.promptUser();
-
-        //         break;
-
-        //     case '6':
-        //         // Encerrar BOT
-        //         await this.botController.stopBot();
-        //         console.log('Encerrando...');
-        //         this.rl.close();
-
-        //         break;
-        //     default:
-        //         console.log('Opção inválida, por favor tente novamente.');
-        // }
-
     }
 
     public async promptUser() {
