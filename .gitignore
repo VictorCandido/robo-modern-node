@@ -5,3 +5,4 @@ node_modules/
 /playwright/.cache/
 /mysql-data
 /dist
+/logs

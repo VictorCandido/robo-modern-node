@@ -1,5 +1,6 @@
 import { Browser, chromium, Page } from "@playwright/test";
 import { configs } from "@prisma/client";
+import logger from "../lib/logger";
 
 export default class BotController {
     browser: Browser | undefined;
@@ -14,111 +15,117 @@ export default class BotController {
 
     public async startBot() {
         try {
+            logger.info(this.config, 'Config selecionada. Iniciando bot...');
+
             await this.login();
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             this.iniciarLances();
             this.iniciaRajadaLances();
         } catch (error) {
-            console.error('[ERROR] - BotController - startBot - ####', error);
+            logger.error(error, 'Falha ao iniciar bot');
             throw error;
         }
     }
 
     private async login() {
-        console.log('#### Iniciando bot ####');
+        try {
+            logger.info('Realizando login...')
 
-        this.browser = await chromium.launch({ headless: false });
-        const context = await this.browser.newContext();
-
-        this.page = await context.newPage();
-
-        console.log('#### Realizando login ####');
-
-        await this.page?.goto(String(this.config.urlLogin));
-
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        await this.page?.fill(`input[name="${String(this.config.idInputUsuario)}"]`, String(this.config.usuario));
-        await this.page?.fill(`input[name="${String(this.config.idInputSenha)}"]`, String(this.config.senha));
-        await this.page?.click(`button[name="${String(this.config.idBotaoLogin)}"]`);
-
-        console.log('#### Login realizado com sucesso ####');
+            this.browser = await chromium.launch({ headless: false });
+            const context = await this.browser.newContext();
+    
+            this.page = await context.newPage();
+    
+            await this.page?.goto(String(this.config.urlLogin));
+    
+            await new Promise(resolve => setTimeout(resolve, 2000));
+    
+            await this.page?.fill(`input[name="${String(this.config.idInputUsuario)}"]`, String(this.config.usuario));
+            await this.page?.fill(`input[name="${String(this.config.idInputSenha)}"]`, String(this.config.senha));
+            await this.page?.click(`button[name="${String(this.config.idBotaoLogin)}"]`);
+    
+            logger.info('Login realizado com sucesso');
+        } catch (error) {
+            logger.error(error, 'Falha ao realizar login');
+            throw error;
+        }
     }
 
     private async iniciarLances() {
         try {
-            console.log('#### Iniciando lances ####');
-
             if (!this.checkHoraInicial()) {
                 console.log('#### Aguardando horario para iniciar lances ####');
+
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 this.iniciarLances();
+                
                 return;
             }
 
+            logger.info('Iniciando lances...');
+
             if (this.checkHoraFinal()) {
-                console.log('#### Hora final atingida, finalizando cobertura de valores ####');
+                logger.info('Hora final atingida, finalizando cobertura de valores');
                 return false;
             }
 
             const lastValue = this.parseStringCurrencyToNumber(String(await this.consultarValorAtualizado()));
 
-            console.log('#### Valor atualizado consultado ####', lastValue);
-            console.log('#### Valor do último lance realizado ####', this.lastBid);
-
             if (this.lastBid === 0 || lastValue < this.lastBid) {
-                console.log('#### Criando novo lance ####');
+                logger.info({ lastValue, lastBid: this.lastBid }, 'Mudança de valor detectada. Realizando novo lance...');
 
                 const redutor = this.parseRedutorToNumber(String(await this.config.redutor));
-
                 const nextValue = await this.realizarLance(lastValue, redutor);
 
                 this.lastBid = nextValue;
-            }
 
-            console.log('#### Lances concluídos ####');
+                logger.info(nextValue, 'Lance realizado');
+            }
 
             this.iniciarLances();
         } catch (error) {
-            console.error('[ERROR] - BotController - iniciarLances - ####', error);
+            logger.error(error, 'Falha ao iniciar lances');
             throw error;
         }
     }
 
     private async consultarValorAtualizado() {
-        console.log('#### Consultando valor atualizado ####');
-
-        const lastValue = await this.page?.evaluate(async (urlDisputa) => {
-            const response = await fetch(String(urlDisputa));
-            const htmlString = await response.text();
-
-            const element = document.createElement('div');
-            element.innerHTML = htmlString;
-            const vrMenorLanceFromRequest = element.querySelector('#vrMenorLance');
-
-            console.log(vrMenorLanceFromRequest)
-
-            let lastValue = '';
-
-            if (vrMenorLanceFromRequest) {
-                lastValue = String(vrMenorLanceFromRequest.textContent);
-            }
-
+        try {
+            const lastValue = await this.page?.evaluate(async (urlDisputa) => {
+                const response = await fetch(String(urlDisputa));
+                const htmlString = await response.text();
+    
+                const element = document.createElement('div');
+                element.innerHTML = htmlString;
+                const vrMenorLanceFromRequest = element.querySelector('#vrMenorLance');
+    
+                console.log(vrMenorLanceFromRequest)
+    
+                let lastValue = '';
+    
+                if (vrMenorLanceFromRequest) {
+                    lastValue = String(vrMenorLanceFromRequest.textContent);
+                }
+    
+                return lastValue;
+            }, String(this.config.urlDisputa));
+    
+            console.log('#### Valor atualizado consultado ####', lastValue);
+    
             return lastValue;
-        }, String(this.config.urlDisputa));
-
-        console.log('#### Valor atualizado consultado ####', lastValue);
-
-        return lastValue;
+        } catch (error) {
+            logger.error(error, 'Falha ao consultar valor atualizado');
+            throw error;
+        }
     }
 
     private async realizarLance(lastValue: number, redutor: number) {
         try {
-            console.log('#### Realizando Lance ####');
-
             const nextValue = lastValue - redutor;
-
+            
+            logger.info({ lastValue, redutor, nextValue }, 'Realizando Lance');
+            
             this.validaValorMinimo(nextValue);
 
             const apiPost = this.config.apiPostLance;
@@ -160,54 +167,18 @@ export default class BotController {
 
             return nextValue;
         } catch (error) {
-            console.error('[ERROR] - BotController - realizarLance - ####', error);
+            logger.error(error, 'Falha ao realizar lance');
             throw error;
         }
     }
 
     private async validaValorMinimo(nextValue: number) {
         const valorMinimo = this.parseStringCurrencyToNumber(String(this.config.valorMinimo));
-        if (nextValue < valorMinimo) throw '[ALERTA!!!] - Lance maior que o valor minimo, encerrando execução';
-    }
 
-    // public async conectarCertame() {
-    //     console.log('#### Conectando com o Certame ####');
-
-    //     await this.page?.evaluate(async () => {
-    //         const container = document.querySelector('.container');
-
-    //         console.log(container)
-
-    //         if (container) {
-    //             const novaDiv = document.createElement('div');
-    //             novaDiv.className = 'card';
-    //             novaDiv.innerHTML = `
-    //                 <h2>Valores da licitação </h2>
-    //                 <p><div type="text" id="vrMenorLance" style="align-self: center">0</div></p>
-    //             `;
-    //             container.appendChild(novaDiv);
-    //         }
-    //     })
-
-    //     console.log('#### Div criada no container ####');
-
-    //     const lastValue = await this.consultarValorAtualizado();
-
-    //     await this.page?.evaluate(async (lastValue) => {
-    //         const vrMenorLance = document.getElementById('vrMenorLance');
-
-    //         if (vrMenorLance) vrMenorLance.innerHTML = String(lastValue);
-    //     }, lastValue);
-
-    //     console.log('#### Valor atualizado com sucesso ####');
-    // }
-
-    private async navegarCertame() {
-        console.log('#### Navegando para página dos lances ####');
-
-        await this.page?.goto(String(this.config.urlDisputa))
-
-        console.log('#### Lances carregados com sucesso ####');
+        if (nextValue < valorMinimo) {
+            logger.info({ nextValue, valorMinimo }, 'Lance menor que o valor minimo, encerrando execução');
+            throw '[ALERTA!!!] - Lance menor que o valor minimo, encerrando execução';
+        }
     }
 
     private parseStringCurrencyToNumber(value: string): number {
@@ -232,7 +203,10 @@ export default class BotController {
     private checkHoraInicial() {
         const horaInicio = this.config.horaInicio;
 
-        if (!horaInicio) throw '[ALERTA!!!] - Hora inicio nula, encerrando execução';
+        if (!horaInicio) {
+            logger.info('Hora inicial nula, encerrando execução');
+            throw '[ALERTA!!!] - Hora inicio nula, encerrando execução';
+        }
 
         const horaInicioDate = new Date(this.convertToTimestamp(horaInicio)).getTime();
         const horaAtual = new Date().getTime();
@@ -243,7 +217,10 @@ export default class BotController {
     private checkHoraFinal() {
         const horaFinal = this.config.horaFinal;
 
-        if (!horaFinal) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        if (!horaFinal) {
+            logger.info('Hora final nula, encerrando execução');
+            throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        }
 
         const horaFinalDate = new Date(this.convertToTimestamp(horaFinal)).getTime();
         const horaAtual = new Date().getTime();
@@ -254,7 +231,10 @@ export default class BotController {
     private checkHoraFinalAuto() {
         const horaFinalAuto = this.config.horaFinalAuto;
 
-        if (!horaFinalAuto) throw '[ALERTA!!!] - HorafinalAuto nula, encerrando execução';
+        if (!horaFinalAuto) {
+            logger.info('Hora final atingida, encerrando execução');
+            throw '[ALERTA!!!] - HorafinalAuto nula, encerrando execução';
+        }
 
         const horaFinalAutoDate = new Date(this.convertToTimestamp(horaFinalAuto)).getTime();
         const horaAtual = new Date().getTime();
@@ -269,8 +249,15 @@ export default class BotController {
         const horaInicialAuto = this.config.horaInicialAuto;
         const horaFinalAuto = this.config.horaFinalAuto;
 
-        if (!horaInicialAuto) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
-        if (!horaFinalAuto) throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        if (!horaInicialAuto) {
+            logger.info('Hora inicial nula, encerrando execução');
+            throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        }
+
+        if (!horaFinalAuto) {
+            logger.info('Hora final nula, encerrando execução');
+            throw '[ALERTA!!!] - Hora final nula, encerrando execução';
+        }
 
 
         const horaInicialAutoDate = new Date(this.convertToTimestamp(horaInicialAuto)).getTime();
@@ -293,7 +280,7 @@ export default class BotController {
     }
 
     private async rajadaDeLances() {
-        console.log('#### Rajada de Lances ####');
+        logger.info('Iniciando Rajada de Lances...');
 
         let value = this.parseStringCurrencyToNumber(String(await this.consultarValorAtualizado()));
 
@@ -373,22 +360,14 @@ export default class BotController {
             const seconds: any = new Date().getSeconds();
             time[seconds] = time[seconds] + 1;
 
-            console.log('#### Lances realizados ####', value);
-            console.log('#### Lances por segundo ####', time);
+            logger.info({ value }, 'Lance realizado');
 
             continuawhile = this.checkHoraInicialAndFinalAuto();
         }
+
+        logger.info('Fim da Rajada de Lances');
+        logger.info(time, 'Media de Lances por segundo');
     }
-
-    // private async testeCompleto() {
-    //     console.log('#### Teste Completo ####');
-
-    //     await this.navegarCertame();
-
-    //     await new Promise(resolve => setTimeout(resolve, 1000));
-
-    //     await this.iniciarLances();
-    // }
 
     public async stopBot() {
         await this.browser?.close();
