@@ -17,7 +17,7 @@ export default class BotController {
         try {
             logger.info(this.config, 'Config selecionada. Iniciando bot...');
 
-            await this.login();
+            // await this.login();
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             this.iniciarLances();
@@ -28,22 +28,25 @@ export default class BotController {
         }
     }
 
-    private async login() {
+    public async initPage() {
+        const browser = await chromium.launch({ headless: false });
+        const context = await browser.newContext();
+
+        const page = await context.newPage();
+        return page;
+    }
+
+    public async login(page: Page) {
         try {
             logger.info('Realizando login...')
-
-            this.browser = await chromium.launch({ headless: false });
-            const context = await this.browser.newContext();
     
-            this.page = await context.newPage();
-    
-            await this.page?.goto(String(this.config.urlLogin));
+            await page?.goto(String(this.config.urlLogin));
     
             await new Promise(resolve => setTimeout(resolve, 2000));
     
-            await this.page?.fill(`input[name="${String(this.config.idInputUsuario)}"]`, String(this.config.usuario));
-            await this.page?.fill(`input[name="${String(this.config.idInputSenha)}"]`, String(this.config.senha));
-            await this.page?.click(`button[name="${String(this.config.idBotaoLogin)}"]`);
+            await page?.fill(`input[name="${String(this.config.idInputUsuario)}"]`, String(this.config.usuario));
+            await page?.fill(`input[name="${String(this.config.idInputSenha)}"]`, String(this.config.senha));
+            await page?.click(`button[name="${String(this.config.idBotaoLogin)}"]`);
     
             logger.info('Login realizado com sucesso');
         } catch (error) {

@@ -1,6 +1,6 @@
 import readline from "readline";
-import BotController from "./bot-controller";
 import ConfigController from "./config-controller";
+import BotController from "./bot-controller";
 
 export default class MenuController {
     rl: readline.Interface;

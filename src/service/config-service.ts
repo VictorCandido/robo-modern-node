@@ -1,7 +1,18 @@
+import { configs } from "@prisma/client";
 import db from "../lib/db";
 
 export default class ConfigService {
     constructor() { }
+
+    async create(data: configs) {
+        try {
+            const newConfig = await db.configs.create({ data });
+            return newConfig;
+        } catch (error) {
+            console.error('[ERROR - 1] - ConfigService - create - ####', error);
+            throw error;
+        }
+    }
 
     async listAll() {
         try {
