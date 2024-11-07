@@ -27,6 +27,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
-    "pino": "^9.5.0"
+    "pino": "^9.5.0",
+    "puppeteer": "^23.6.1",
+    "puppeteer-cluster": "^0.24.0"
   }
 }
