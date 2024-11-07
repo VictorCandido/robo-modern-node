@@ -1,90 +1,106 @@
 test('empty test', () => {})
 
-// // import {  } from '@jest/globals';
-// import { test, expect } from '@playwright/test';
+import { configs } from '@prisma/client';
+import { Page, Browser } from 'puppeteer';
 
-// import BotController from '../../src/controller/bot-controller';
-// import { configs } from '@prisma/client';
+import BotController from '../../src/controller/bot-controller';
 
-// test('should init page', async () => {
-//     const config: configs = {
-//         "id": 1,
-//         "idInputUsuario": "username",
-//         "idInputSenha": "password",
-//         "idBotaoLogin": "login",
-//         "idBotaoLance": "newBidButton",
-//         "usuario": "sistema",
-//         "senha": "1!@#SAWOLK",
-//         "urlLogin": "https://nodetst.iv2.com.br/sign-in?redirect_url=https%3A%2F%2Fnodetst.iv2.com.br%2F",
-//         "urlDisputa": "https://nodetst.iv2.com.br/api/lances-html/377f7f5e-4412-475e-b9bf-5db1fe306c57",
-//         "tituloDisputa": "Sem Captcha",
-//         "valorMinimo": "200.000,00",
-//         "idInputLance": "newBid",
-//         "lanceInicial": "",
-//         "redutor": "5,00",
-//         "auto": 0,
-//         "horaFinal": "23/10/2024 00:12:51",
-//         "redutorAuto": "2,00",
-//         "apiKey": "semapi",
-//         "siteKey": "siteKey",
-//         "horaInicialAuto": "23/10/2024 00:12:01",
-//         "horaFinalAuto": "23/10/2024 00:12:06",
-//         "apiPostLance": "https://nodetst.iv2.com.br/api/socket/bid-sem-captcha/",
-//         "hostName": "MDRN-OCI-RPA001",
-//         "ultimaAtualizacao": "14/10/2024 15:51:46",
-//         "proximaAtualizacao": "15/10/2024 05:45:06",
-//         "nuSequencial": "377f7f5e-4412-475e-b9bf-5db1fe306c57",
-//         "leituraUnica": 1,
-//         "horaInicio": "23/10/2024 00:11:51"
-//     };
+describe('BotController', () => {
+    const config: configs = {
+        "id": 1,
+        "idInputUsuario": "username",
+        "idInputSenha": "password",
+        "idBotaoLogin": "login",
+        "idBotaoLance": "newBidButton",
+        "usuario": "sistema",
+        "senha": "1!@#SAWOLK",
+        "urlLogin": "https://nodetst.iv2.com.br/sign-in?redirect_url=https%3A%2F%2Fnodetst.iv2.com.br%2F",
+        "urlDisputa": "https://nodetst.iv2.com.br/api/lances-html/377f7f5e-4412-475e-b9bf-5db1fe306c57",
+        "tituloDisputa": "Sem Captcha",
+        "valorMinimo": "200.000,00",
+        "idInputLance": "newBid",
+        "lanceInicial": "",
+        "redutor": "5,00",
+        "auto": 0,
+        "horaFinal": "23/10/2024 00:12:51",
+        "redutorAuto": "2,00",
+        "apiKey": "semapi",
+        "siteKey": "siteKey",
+        "horaInicialAuto": "23/10/2024 00:12:01",
+        "horaFinalAuto": "23/10/2024 00:12:06",
+        "apiPostLance": "https://nodetst.iv2.com.br/api/socket/bid-sem-captcha/",
+        "hostName": "MDRN-OCI-RPA001",
+        "ultimaAtualizacao": "14/10/2024 15:51:46",
+        "proximaAtualizacao": "15/10/2024 05:45:06",
+        "nuSequencial": "377f7f5e-4412-475e-b9bf-5db1fe306c57",
+        "leituraUnica": 1,
+        "horaInicio": "23/10/2024 00:11:51"
+    };
 
-//     const botController = new BotController(config);
-//     const page = await botController.initPage();
+    const botController = new BotController(config);
+    let browser: Browser;
+    let page: Page;
 
-//     expect(page).toBeTruthy();
-// });
+    beforeAll(async () => {
+        browser = await botController.initBrowser({ headless: true });
+        page = await botController.initPage(browser);
+    });
 
-// test('should login', async () => {
-//     const config: configs = {
-//         "id": 1,
-//         "idInputUsuario": "username",
-//         "idInputSenha": "password",
-//         "idBotaoLogin": "login",
-//         "idBotaoLance": "newBidButton",
-//         "usuario": "sistema",
-//         "senha": "1!@#SAWOLK",
-//         "urlLogin": "https://nodetst.iv2.com.br/sign-in?redirect_url=https%3A%2F%2Fnodetst.iv2.com.br%2F",
-//         "urlDisputa": "https://nodetst.iv2.com.br/api/lances-html/377f7f5e-4412-475e-b9bf-5db1fe306c57",
-//         "tituloDisputa": "Sem Captcha",
-//         "valorMinimo": "200.000,00",
-//         "idInputLance": "newBid",
-//         "lanceInicial": "",
-//         "redutor": "5,00",
-//         "auto": 0,
-//         "horaFinal": "23/10/2024 00:12:51",
-//         "redutorAuto": "2,00",
-//         "apiKey": "semapi",
-//         "siteKey": "siteKey",
-//         "horaInicialAuto": "23/10/2024 00:12:01",
-//         "horaFinalAuto": "23/10/2024 00:12:06",
-//         "apiPostLance": "https://nodetst.iv2.com.br/api/socket/bid-sem-captcha/",
-//         "hostName": "MDRN-OCI-RPA001",
-//         "ultimaAtualizacao": "14/10/2024 15:51:46",
-//         "proximaAtualizacao": "15/10/2024 05:45:06",
-//         "nuSequencial": "377f7f5e-4412-475e-b9bf-5db1fe306c57",
-//         "leituraUnica": 1,
-//         "horaInicio": "23/10/2024 00:11:51"
-//     };
+    it('should init browser', async () => {
+        expect(browser).toBeDefined();
+        expect(browser).toBeInstanceOf(Browser);
+    });
 
-//     const botController = new BotController(config);
-//     const page = await botController.initPage();
+    it('should init page', async () => {
+        expect(page).toBeDefined();
+        expect(page).toBeInstanceOf(Page);
+    });
+
+    it('should login', async () => {
+        await botController.login(page);
     
-//     await botController.login(page);
+        expect(page).toBeDefined();
+        expect(page).toBeInstanceOf(Page);
+    
+        const query = await page.mainFrame().$('#clerk-components');
+        expect(query).not.toBeNull();
+    });
 
-//     expect(page).toHaveTitle('alo');
-// });
+    it('should check last amount', async () => {
+        const lastValue = await botController.consultarValorAtualizado(page);
 
-// // describe('BotController', () => {
+        expect(lastValue).not.toBeNull();
+        expect(lastValue).toBeGreaterThan(0);
+    });
+
+    it('should place a bid', async () => {
+        const lastValue = await botController.consultarValorAtualizado(page);
+        const nextValue = (lastValue - 1);
+        const bidResponse = await botController.realizarLance(page, nextValue);
+
+        console.log('#### bidResponse', bidResponse);
+
+        expect(bidResponse?.status).toBeDefined();
+        expect(bidResponse?.status).toBe(200);
+        expect(bidResponse?.success).toBeTruthy();
+        expect(bidResponse?.data.id).toBe(config.nuSequencial);
+    });
+
+    it('should return error when placing a wrong bid', async () => {
+        const lastValue = await botController.consultarValorAtualizado(page);
+        const nextValue = (lastValue);
+        const bidResponse = await botController.realizarLance(page, nextValue);
+
+        expect(bidResponse?.status).toBeDefined();
+        expect(bidResponse?.status).toBe(400);
+        expect(bidResponse?.success).toBeFalsy();
+        expect(bidResponse?.data.message).toBe('Invalid amount');
+    });
+
+    afterAll(async () => {
+        await botController.closeBrowser(browser);
+    });
+});
 // //     it('should init page', async () => {
 // //         const config: configs = {
 // //             "id": 1,

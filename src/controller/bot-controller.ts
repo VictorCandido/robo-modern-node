@@ -7,7 +7,7 @@ import CounterModel from "../model/counter-model";
 import ResponseModel from "../model/response-model";
 
 export default class BotController {
-    private readonly TOTAL_ABAS = 5;    
+    private readonly TOTAL_ABAS = process.env.TOTAL_ABAS ? Number(process.env.TOTAL_ABAS) : 5;    
     private counters = new CounterModel();
 
     constructor(
@@ -16,13 +16,13 @@ export default class BotController {
 
     public async startBot() {
         logger.info(this.config, '#### Config selecionada. Iniciando bot ####');
-        const browser = await this.initBrowser();
+        const browser = await this.initBrowser({ headless: true });
 
         try {
             
             const pageArray = new Array();
     
-            logger.info({ abas: this.TOTAL_ABAS }, '#### Iniciando abas');
+            logger.info({ TOTAL_ABAS: this.TOTAL_ABAS }, '#### Iniciando abas');
     
             for (let i = 0; i < this.TOTAL_ABAS; i++) {
                 const page = await this.initPage(browser);
@@ -42,7 +42,7 @@ export default class BotController {
             logger.info('#### Encerrando bot...');
             logger.info(this.counters.toObject(), '#### Resultado final ####');
         } catch (error) {
-            await this.stopBot(browser);
+            await this.closeBrowser(browser);
 
             if (error instanceof ResponseModel) {
                 if (error.status === 'CONFIG_NOT_FOUND') {
@@ -73,13 +73,14 @@ export default class BotController {
      * 
      * @returns {Promise<Browser>} A promise that resolves to the launched browser instance.
      */
-    public async initBrowser() {
-        const browser = await puppeteer.launch({ headless: true });
+    public async initBrowser({ headless }: {  headless: boolean }): Promise<Browser> {
+        const browser = await puppeteer.launch({ headless: headless, devtools: true });
         return browser;
     }
 
     public async initPage(browser: Browser) {
         const page = await browser.newPage();
+        // page.on('console', msg => console.log('PAGE LOG:', msg.text()));
         return page;
     }
 
@@ -104,7 +105,7 @@ export default class BotController {
         }
     }
 
-    private async consultarValorAtualizado(page: Page) {
+    public async consultarValorAtualizado(page: Page) {
         try {
             const lastValue = await page.evaluate(async (urlDisputa) => {
                 const response = await fetch(String(urlDisputa));
@@ -199,7 +200,7 @@ export default class BotController {
         }
     }
 
-    private async realizarLance(page: Page, bidValue: number) {
+    public async realizarLance(page: Page, bidValue: number) {
         try {
             logger.info({ bidValue }, '#### Realizando Lance');
             
@@ -211,27 +212,36 @@ export default class BotController {
 
             try {
                 const response = await page.evaluate(async ([bidValue, apiPost, numSequencial] ) => {
-                    const response = await fetch(String(apiPost), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            roomId: numSequencial,
-                            amount: bidValue
-                        })
-                        // body: JSON.stringify({
-                        //     'ano': '2024',
-                        //     'nuSequencial': numSequencial,
-                        //     'idInteressado': '03887831000115',
-                        //     'valorLance': bidValue
-                        // })
-                    });
+                    try {
+                        const response = await fetch(String(apiPost), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                roomId: numSequencial,
+                                amount: bidValue
+                            })
+                            // body: JSON.stringify({
+                            //     'ano': '2024',
+                            //     'nuSequencial': numSequencial,
+                            //     'idInteressado': '03887831000115',
+                            //     'valorLance': bidValue
+                            // })
+                        });
     
-                    return response;
+                        const data = await response.json();
+                        return { success: response.ok, status: response.status, statusText: response.statusText, data };
+                    } catch (error) {
+                        return { success: false, status: 500, statusText: 'Internal Server Error', data: error };
+                    }
                 }, [bidValue, apiPost, numSequencial]);
 
                 this.counters.respostas++;
+                this.counters.historicoRespostas.push({
+                    bidValue,
+                    response
+                });
                 this.incrementRespostasCounter();
     
                 return response;
@@ -259,7 +269,7 @@ export default class BotController {
         process.on('uncaughtException', async () => await this.closeBrowser(browser));
     }
 
-    private async closeBrowser(browser: Browser) {
+    public async closeBrowser(browser: Browser) {
         logger.info('#### Encerrando bot...');
         await browser.close();
     }
