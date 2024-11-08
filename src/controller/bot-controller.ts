@@ -5,42 +5,40 @@ import { checkHoraFinalAuto, checkHoraInicialAndFinalAuto, validaValorMinimo } f
 import { parseRedutorToNumber, parseStringCurrencyToNumber } from "../lib/utils";
 import CounterModel from "../model/counter-model";
 import ResponseModel from "../model/response-model";
-import { cpus } from "os";
-import cluster from "cluster";
 
 export default class BotController {
-    private readonly TOTAL_ABAS = process.env.TOTAL_ABAS ? Number(process.env.TOTAL_ABAS) : 5;
+    private readonly TOTAL_ABAS = process.env.TOTAL_ABAS ? Number(process.env.TOTAL_ABAS) : 5;    
     private counters = new CounterModel();
 
     constructor(
         private config: configs
-    ) { }
+    ) {}
 
     public async startBot() {
         logger.info(this.config, '#### Config selecionada. Iniciando bot ####');
-        const browser = await this.initBrowser({ headless: false });
+        const browser = await this.initBrowser({ headless: true });
 
         try {
-
+            
             const pageArray = new Array();
-
+    
             logger.info({ TOTAL_ABAS: this.TOTAL_ABAS }, '#### Iniciando abas');
-
+    
             for (let i = 0; i < this.TOTAL_ABAS; i++) {
                 const page = await this.initPage(browser);
                 await this.login(page);
                 pageArray.push(page);
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
-
+    
             logger.info('#### Abas iniciadas');
-
+    
             const bidValue = await this.consultarValorAtualizado(pageArray[0]);
             logger.info({ bidValue }, '#### Valor atualizado consultado');
-
+    
             await this.initSequenciaDeLances(pageArray, bidValue);
             this.stopBot(browser);
-
+    
             logger.info('#### Encerrando bot...');
             logger.info(this.counters.toObject(), '#### Resultado final ####');
         } catch (error) {
@@ -66,106 +64,7 @@ export default class BotController {
             logger.error(error, '#### Falha na execução do bot');
         }
     }
-
-    // public async startBot() {
-    //     logger.info(this.config, '#### Config selecionada. Iniciando bot ####');
-    //     const threads = cpus().length;
-
-    //     let bidValue: number = 0;
-
-
-    //     if (cluster.isPrimary) {
-    //         logger.info('#### Iniciando browser do cluster');
-    //         const browser = await this.initBrowser({ headless: false });
-    //         const page = await this.initPage(browser);
-    //         await this.login(page);
-
-    //         bidValue = await this.consultarValorAtualizado(page);
-    //         logger.info({ bidValue }, '#### Valor atualizado consultado');
-
-    //         await this.closeBrowser(browser);
-
-    //         for (let i = 0; i < threads; i++) {
-    //             console.log('Criando processo filho', i + 1, 'de', threads);
-    //             cluster.fork();
-    //         }
-
-    //         cluster.on('exit', (worker, code, signal) => {
-    //             console.log(`Processo filho ${worker.process.pid} encerrado`);
-    //             cluster.fork();
-    //         });
-
-    //         // Cluster recebendo msgs dos processos
-    //         cluster.on('message', (worker, msg) => {
-    //             if (msg === 'GET_BID') {
-    //                 bidValue -= 5;
-    //                 // Cluster retornando msg para o processo
-    //                 worker.send({ bidValue });
-    //             }
-
-    //         });
-
-    //     } else {
-    //         const browser = await this.initBrowser({ headless: false });
-
-    //         try {
-    //             const pageArray = new Array();
-
-    //             logger.info({ TOTAL_ABAS: this.TOTAL_ABAS }, '#### Iniciando abas');
-
-    //             for (let i = 0; i < this.TOTAL_ABAS; i++) {
-    //                 const page = await this.initPage(browser);
-    //                 await this.login(page);
-    //                 pageArray.push(page);
-    //                 await new Promise(resolve => setTimeout(resolve, 1000));
-    //             }
-
-    //             logger.info('#### Abas iniciadas');
-
-    //             // const bidValue = await this.consultarValorAtualizado(pageArray[0]);
-    //             // logger.info({ bidValue }, '#### Valor atualizado consultado');
-
-
-    //             process.on('message', async (msg: { bidValue: number }) => {
-    //                 logger.info(msg, `#### Recebendo msg do cluster no filho ${process.pid}`);
-
-    //                 if (msg.bidValue !== undefined) {
-    //                     for (let i = 0; i < pageArray.length; i++) {
-    //                         await this.realizarLance(pageArray[i], msg.bidValue);
-    //                     }
-    //                 }
-    //             });
-
-    //             // await this.initSequenciaDeLances(pageArray, bidValue, process);
-    //             // this.stopBot(browser);
-
-    //             // logger.info('#### Encerrando bot...');
-    //             // logger.info(this.counters.toObject(), '#### Resultado final ####');
-    //         } catch (error) {
-    //             await this.closeBrowser(browser);
-
-    //             if (error instanceof ResponseModel) {
-    //                 if (error.status === 'CONFIG_NOT_FOUND') {
-    //                     logger.info(error, '#### Falha na configuração do bot. Por favor analisar banco de dados e iniciar novamente ####');
-    //                     throw error;
-    //                 }
-
-    //                 if (error.status === 'INTERNAL_ERROR') {
-    //                     logger.info(error, '#### Falha na execução do bot. Por favor analisar logs e iniciar novamente ####');
-    //                     throw error;
-    //                 }
-
-    //                 if (error.status === 'END') {
-    //                     logger.info(error, '#### Resposta do bot. Encerrando processamento ####');
-    //                     return;
-    //                 }
-    //             }
-
-    //             logger.error(error, '#### Falha na execução do bot');
-    //         }
-    //     }
-    // }
-
+    
     /**
      * Initializes a Puppeteer browser instance.
      * 
@@ -174,7 +73,7 @@ export default class BotController {
      * 
      * @returns {Promise<Browser>} A promise that resolves to the launched browser instance.
      */
-    public async initBrowser({ headless }: { headless: boolean }): Promise<Browser> {
+    public async initBrowser({ headless }: {  headless: boolean }): Promise<Browser> {
         const browser = await puppeteer.launch({ headless: headless, devtools: true });
         return browser;
     }
@@ -211,22 +110,22 @@ export default class BotController {
             const lastValue = await page.evaluate(async (urlDisputa) => {
                 const response = await fetch(String(urlDisputa));
                 const htmlString = await response.text();
-
+    
                 const element = document.createElement('div');
                 element.innerHTML = htmlString;
                 const vrMenorLanceFromRequest = element.querySelector('#vrMenorLance');
-
+    
                 console.log(vrMenorLanceFromRequest)
-
+    
                 let lastValue = '';
-
+    
                 if (vrMenorLanceFromRequest) {
                     lastValue = String(vrMenorLanceFromRequest.textContent);
                 }
-
+    
                 return lastValue;
             }, String(this.config.urlDisputa));
-
+    
             return parseStringCurrencyToNumber(String(lastValue));
         } catch (error) {
             logger.error(error, '#### Falha ao consultar valor atualizado');
@@ -243,13 +142,10 @@ export default class BotController {
 
             if (checkHoraInicialAndFinalAuto(this.config)) {
                 await this.executeSequenciaDeLances(pageArray, bidValue);
-                // logger.info('#### enviando getBid');
-                // process.send('getBid');
                 return;
             }
 
             await new Promise(resolve => setTimeout(resolve, 1000));
-            // await this.initSequenciaDeLances(pageArray, bidValue, process);
             await this.initSequenciaDeLances(pageArray, bidValue);
         } catch (error) {
             logger.error(error, '#### Falha ao iniciar sequência de lances');
@@ -258,7 +154,7 @@ export default class BotController {
     }
 
     private async executeSequenciaDeLances(pageArray: Array<Page>, bidValue: number) {
-        logger.info('#### Executando Sequência de Lances');
+        logger.info('#### Executando Sequência de Lances ####');
 
         try {
             let currentBidValue = bidValue;
@@ -273,7 +169,7 @@ export default class BotController {
 
                     this.counters.lances++;
                     this.incrementLanceCounter();
-
+                    
                     continuawhile = checkHoraInicialAndFinalAuto(this.config);
                     if (!continuawhile) break;
 
@@ -307,7 +203,7 @@ export default class BotController {
     public async realizarLance(page: Page, bidValue: number) {
         try {
             logger.info({ bidValue }, '#### Realizando Lance');
-
+            
             const isValid = validaValorMinimo(bidValue, this.config);
             if (!isValid) throw new ResponseModel('END', false, 'Lance menor que o valor minimo, encerrando execução');
 
@@ -315,7 +211,7 @@ export default class BotController {
             const numSequencial = this.config.nuSequencial;
 
             try {
-                const response = await page.evaluate(async ([bidValue, apiPost, numSequencial]) => {
+                const response = await page.evaluate(async ([bidValue, apiPost, numSequencial] ) => {
                     try {
                         const response = await fetch(String(apiPost), {
                             method: 'POST',
@@ -333,7 +229,7 @@ export default class BotController {
                             //     'valorLance': bidValue
                             // })
                         });
-
+    
                         const data = await response.json();
                         return { success: response.ok, status: response.status, statusText: response.statusText, data };
                     } catch (error) {
@@ -347,10 +243,10 @@ export default class BotController {
                     response
                 });
                 this.incrementRespostasCounter();
-
+    
                 return response;
             } catch (error) {
-                logger.error(error, '#### Falha na executação do evaluate durante o lance');
+                logger.error(error, '#### Falha na executação do evaluate durante o lance');    
             }
         } catch (error) {
             logger.error(error, '#### Falha ao realizar lance');

@@ -52,7 +52,7 @@ export default class MenuController {
         if (!config) {
             return;
         }
-
+        
         const botController = new BotController(config);
         botController.startBot();
     }
