@@ -9,6 +9,7 @@ import ResponseModel from "../model/response-model";
 export default class BotController {
     private readonly TOTAL_ABAS = process.env.TOTAL_ABAS ? Number(process.env.TOTAL_ABAS) : 5;
     private counters = new CounterModel();
+    private updatingBidValue: number = 0;
 
     constructor(
         private config: configs
@@ -36,7 +37,9 @@ export default class BotController {
             const bidValue = await this.consultarValorAtualizado(pageArray[0]);
             logger.info({ bidValue }, '#### Valor atualizado consultado');
 
+            this.initConsultasEmSequencia(pageArray[0]);
             await this.initSequenciaDeLances(pageArray, bidValue);
+
             this.stopBot(browser);
 
             logger.info('#### Encerrando bot...');
@@ -65,14 +68,6 @@ export default class BotController {
         }
     }
 
-    /**
-     * Initializes a Puppeteer browser instance.
-     * 
-     * Launches a new browser instance with the headless option set to true,
-     * hiding the browser window during execution.
-     * 
-     * @returns {Promise<Browser>} A promise that resolves to the launched browser instance.
-     */
     public async initBrowser({ headless }: { headless: boolean }): Promise<Browser> {
         const browser = await puppeteer.launch({ headless: headless, devtools: true });
         return browser;
@@ -133,6 +128,26 @@ export default class BotController {
         }
     }
 
+    private async initConsultasEmSequencia(page: Page) {
+        try {
+            const horaFinal = checkHoraFinalAuto(this.config);
+            if (horaFinal) {
+                logger.info('#### Hora final atingida, encerrando execução');
+                return;
+            }
+
+            this.updatingBidValue = await this.consultarValorAtualizado(page);
+
+            logger.info({ updatingBidValue: this.updatingBidValue }, '#### Valor atualizado consultado');
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await this.initConsultasEmSequencia(page);
+        } catch (error) {
+            logger.error(error, '#### Falha ao iniciar consultas em sequência');
+            throw error;
+        }
+    }
+
     private async initSequenciaDeLances(pageArray: Array<Page>, bidValue: number) {
         logger.info('#### Iniciando sequência de lances');
 
@@ -165,6 +180,11 @@ export default class BotController {
             while (continuawhile) {
                 for (let page of pageArray) {
                     currentBidValue -= redutor;
+
+                    if (this.updatingBidValue < currentBidValue) {
+                        currentBidValue = this.updatingBidValue - redutor;
+                    }
+
                     this.realizarLance(page, currentBidValue);
 
                     this.counters.lances++;
