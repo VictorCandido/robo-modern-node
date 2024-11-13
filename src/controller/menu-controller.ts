@@ -1,7 +1,6 @@
 import readline from "readline";
 import ConfigController from "./config-controller";
 import BotController from "./bot-controller";
-// import BotController from "./bot-controller-bkp";
 
 export default class MenuController {
     rl: readline.Interface;
@@ -10,9 +9,7 @@ export default class MenuController {
         tituloDisputa: string | null;
     }[] = [];
 
-    constructor(
-        private configController: ConfigController
-    ) {
+    constructor(private configController: ConfigController) {
         this.rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout
@@ -35,8 +32,9 @@ export default class MenuController {
 
         this.titles.forEach((title, index) => {
             console.log(`${index + 1}. ${title.tituloDisputa}`);
-        })
+        });
     }
+
     private async handleBotMenuUserInput(option: string) {
         const selectedIndex = Number(option.trim()) - 1;
 

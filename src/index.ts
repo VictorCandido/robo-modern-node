@@ -13,4 +13,4 @@ logger.info('### Iniciando nova instância de NodeBot ###');
 (async () => {
     await new Promise(resolve => setTimeout(resolve, 500));
     menuController.promptUser();
-})()
+})();

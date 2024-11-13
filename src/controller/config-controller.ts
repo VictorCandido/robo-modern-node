@@ -5,10 +5,7 @@ export default class ConfigController {
 
     config: configs | undefined;
 
-    constructor(
-        private configService: ConfigService
-    ) {
-    }
+    constructor(private configService: ConfigService) { }
 
     async listAll() {
         try {
