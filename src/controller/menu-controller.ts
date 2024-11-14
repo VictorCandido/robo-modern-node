@@ -1,6 +1,7 @@
+import { configs } from "@prisma/client";
 import readline from "readline";
+
 import ConfigController from "./config-controller";
-import BotController from "./bot-controller";
 
 export default class MenuController {
     rl: readline.Interface;
@@ -14,8 +15,6 @@ export default class MenuController {
             input: process.stdin,
             output: process.stdout
         });
-
-        this.handleBotMenuUserInput = this.handleBotMenuUserInput.bind(this);
     }
 
     private async loadTitles() {
@@ -35,28 +34,27 @@ export default class MenuController {
         });
     }
 
-    private async handleBotMenuUserInput(option: string) {
-        const selectedIndex = Number(option.trim()) - 1;
-
-        if (selectedIndex < 0 || selectedIndex >= this.titles.length) {
-            console.log('Opção inválida, por favor tente novamente.');
-            this.promptUser();
-            return;
-        }
-
-        const selectedId = this.titles[selectedIndex]?.id;
-        const config = await this.configController.listById(selectedId);
-
-        if (!config) {
-            return;
-        }
-
-        const botController = new BotController(config);
-        botController.startBot();
-    }
-
-    public async promptUser() {
+    public async promptUser(): Promise<configs> {
         await this.displayBotMenu();
-        this.rl.question('Digite a opção: ', this.handleBotMenuUserInput);
+
+        return new Promise(async (resolve, reject) => {
+            this.rl.question('Digite a opção: ', async (option) => {
+                const selectedIndex = Number(option.trim()) - 1;
+
+                if (selectedIndex < 0 || selectedIndex >= this.titles.length) {
+                    console.log('Opção inválida, por favor tente novamente.');
+                    return resolve(await this.promptUser());
+                }
+
+                const selectedId = this.titles[selectedIndex]?.id;
+                const config = await this.configController.listById(selectedId);
+
+                if (!config) {
+                    return reject('Config não encontrada');
+                }
+
+                return resolve(config);
+            });
+        });
     }
 }

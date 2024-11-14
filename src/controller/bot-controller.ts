@@ -1,5 +1,6 @@
 import { configs } from "@prisma/client";
 import puppeteer, { Browser, Page } from "puppeteer";
+
 import logger from "../lib/logger";
 import { checkHoraFinalAuto, checkHoraInicialAndFinalAuto, validaValorMinimo } from "../lib/rules";
 import { parseRedutorToNumber, parseStringCurrencyToNumber } from "../lib/utils";
