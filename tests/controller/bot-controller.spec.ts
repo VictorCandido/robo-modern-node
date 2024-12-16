@@ -15,9 +15,9 @@ describe('BotController', () => {
         "usuario": "sistema",
         "senha": "1!@#SAWOLK",
         "urlLogin": "https://nodetst.iv2.com.br/sign-in?redirect_url=https%3A%2F%2Fnodetst.iv2.com.br%2F",
-        "urlDisputa": "https://nodetst.iv2.com.br/api/lances-html/377f7f5e-4412-475e-b9bf-5db1fe306c57",
+        "urlDisputa": "https://nodetst.iv2.com.br/api/lances-html/52d3dc87-541e-4255-92fc-2eae2bed5f3d",
         "tituloDisputa": "Sem Captcha",
-        "valorMinimo": "200.000,00",
+        "valorMinimo": "100.000,00",
         "idInputLance": "newBid",
         "lanceInicial": "",
         "redutor": "5,00",
@@ -32,7 +32,7 @@ describe('BotController', () => {
         "hostName": "MDRN-OCI-RPA001",
         "ultimaAtualizacao": "14/10/2024 15:51:46",
         "proximaAtualizacao": "15/10/2024 05:45:06",
-        "nuSequencial": "377f7f5e-4412-475e-b9bf-5db1fe306c57",
+        "nuSequencial": "52d3dc87-541e-4255-92fc-2eae2bed5f3d",
         "leituraUnica": 1,
         "horaInicio": "23/10/2024 00:11:51"
     };

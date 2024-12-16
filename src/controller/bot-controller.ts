@@ -11,21 +11,43 @@ export default class BotController {
     private readonly TOTAL_ABAS = process.env.TOTAL_ABAS ? Number(process.env.TOTAL_ABAS) : 5;
     private counters = new CounterModel();
     private updatingBidValue: number = 0;
+    private currentBidValue: number = 0;
 
     constructor(
         private config: configs
     ) { }
 
+    public initCurrentBidValue(currentBidValue: number) {
+        this.currentBidValue = currentBidValue;
+    }
+
+    public getNewBidValue() {
+        logger.info('#### Consultando new Bid Value');
+
+        const redutor = parseRedutorToNumber(String(this.config.redutorAuto));
+
+        logger.info({ redutor }, '#### redutor');
+        logger.info({ currentBidValue: this.currentBidValue }, '#### currentBidValue');
+
+        this.currentBidValue -= redutor;
+
+        if (this.updatingBidValue < this.currentBidValue) {
+            this.currentBidValue = this.updatingBidValue - redutor;
+        }
+
+        return this.currentBidValue;
+    }
+
     public async startBot() {
-        logger.info(this.config, '#### Config selecionada. Iniciando bot ####');
-        const browser = await this.initBrowser({ headless: true });
+        logger.info({ config: this.config }, '#### Config selecionada. Iniciando bot ####');
+        const browser = await this.initBrowser({ headless: false });
 
         try {
-
             const pageArray = new Array();
 
             logger.info({ TOTAL_ABAS: this.TOTAL_ABAS }, '#### Iniciando abas');
 
+            // Cria a quantidade de abas e realiza login confirme parameterizado no process.env
             for (let i = 0; i < this.TOTAL_ABAS; i++) {
                 const page = await this.initPage(browser);
                 await this.login(page);
@@ -33,14 +55,22 @@ export default class BotController {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
+            this.receiveMessage(pageArray);
+
             logger.info('#### Abas iniciadas');
 
-            const bidValue = await this.consultarValorAtualizado(pageArray[0]);
-            logger.info({ bidValue }, '#### Valor atualizado consultado');
+            // Consulta útlimo valor de lance atualizado
+            // const bidValue = await this.consultarValorAtualizado(pageArray[0]);
+            // logger.info({ bidValue }, '#### Valor atualizado consultado');
 
-            this.initConsultasEmSequencia(pageArray[0]);
-            await this.initSequenciaDeLances(pageArray, bidValue);
+            // Realiza a consulta dos valores atualizados para permitir que, caso seja feito algum lance
+            // grande, o robô consiga atualizar e abaixar a partir desse lance
+            // this.initConsultasEmSequencia(pageArray[0]);
 
+            // Realiza a sequência de lances o mais rápido possível para cobrir qualquer lance executado
+            await this.initSequenciaDeLances(pageArray);
+
+            // Encerra a execução do bot e fecha as páginas assim que finalizado
             this.stopBot(browser);
 
             logger.info('#### Encerrando bot...');
@@ -111,8 +141,6 @@ export default class BotController {
                 element.innerHTML = htmlString;
                 const vrMenorLanceFromRequest = element.querySelector('#vrMenorLance');
 
-                console.log(vrMenorLanceFromRequest)
-
                 let lastValue = '';
 
                 if (vrMenorLanceFromRequest) {
@@ -121,7 +149,6 @@ export default class BotController {
 
                 return lastValue;
             }, String(this.config.urlDisputa));
-
             return parseStringCurrencyToNumber(String(lastValue));
         } catch (error) {
             logger.error(error, '#### Falha ao consultar valor atualizado');
@@ -129,7 +156,7 @@ export default class BotController {
         }
     }
 
-    private async initConsultasEmSequencia(page: Page) {
+    public async initConsultasEmSequencia(page: Page) {
         try {
             const horaFinal = checkHoraFinalAuto(this.config);
             if (horaFinal) {
@@ -149,47 +176,61 @@ export default class BotController {
         }
     }
 
-    private async initSequenciaDeLances(pageArray: Array<Page>, bidValue: number) {
-        logger.info('#### Iniciando sequência de lances');
+    private async initSequenciaDeLances(pageArray: Array<Page>) {
+        logger.info('#### Validando horário inicial');
 
         try {
             const horaFinal = checkHoraFinalAuto(this.config);
             if (horaFinal) throw new ResponseModel('END', false, 'Hora final atingida, encerrando execução');
 
             if (checkHoraInicialAndFinalAuto(this.config)) {
-                await this.executeSequenciaDeLances(pageArray, bidValue);
+                logger.info('#### Iniciando sequência de lances');
+                await this.executeSequenciaDeLances(pageArray);
                 return;
             }
 
             await new Promise(resolve => setTimeout(resolve, 1000));
-            await this.initSequenciaDeLances(pageArray, bidValue);
+            await this.initSequenciaDeLances(pageArray);
         } catch (error) {
             logger.error(error, '#### Falha ao iniciar sequência de lances');
             throw error;
         }
     }
 
-    private async executeSequenciaDeLances(pageArray: Array<Page>, bidValue: number) {
-        logger.info('#### Executando Sequência de Lances');
+    private askForNewBid(index: number) {
+        if (process && process.send) {
+            process.send({
+                type: 'requestBid',
+                index
+            });
+        }
+    }
 
-        try {
-            let currentBidValue = bidValue;
+    private receiveMessage(pageArray: Array<Page>) {
+        if (process && process.on) {
+            process.on('message', ({ type, index, newBidValue }) => {
+                logger.info({ type, index, newBidValue }, '#### Processo filho recebeu uma mensagem');
 
-            let continuawhile = checkHoraInicialAndFinalAuto(this.config);
-            const redutor = parseRedutorToNumber(String(this.config.redutorAuto));
+                if (type === 'newBidValue') {
 
-            while (continuawhile) {
-                for (let page of pageArray) {
-                    currentBidValue -= redutor;
-
-                    if (this.updatingBidValue < currentBidValue) {
-                        currentBidValue = this.updatingBidValue - redutor;
-                    }
-
-                    this.realizarLance(page, currentBidValue);
+                    this.realizarLance(pageArray[index], newBidValue);
 
                     this.counters.lances++;
                     this.incrementLanceCounter();
+                }
+            });
+        }
+    }
+
+    private async executeSequenciaDeLances(pageArray: Array<Page>) {
+        logger.info('#### Executando Sequência de Lances');
+
+        try {
+            let continuawhile = checkHoraInicialAndFinalAuto(this.config);
+
+            while (continuawhile) {
+                for (var index = 0; index < pageArray.length; index++) {
+                    this.askForNewBid(index);
 
                     continuawhile = checkHoraInicialAndFinalAuto(this.config);
                     if (!continuawhile) break;
@@ -294,5 +335,4 @@ export default class BotController {
         logger.info('#### Encerrando bot...');
         await browser.close();
     }
-
 }
